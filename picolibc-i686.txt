@@ -1,0 +1,18 @@
+# Meson cross-compilation file for i686-elf with picolibc
+[binaries]
+c = 'gcc'
+ar = 'ar'
+as = 'as'
+ld = 'ld'
+strip = 'strip'
+
+[host_machine]
+system = 'none'
+cpu_family = 'x86'
+cpu = 'i686'
+endian = 'little'
+
+[properties]
+c_args = ['-m32', '-march=i686']
+c_link_args = ['-m32']
+skip_sanity_check = true
