@@ -19,8 +19,11 @@ fi
 mkdir -p "$BUILD_DIR"
 mkdir -p "$OUT_DIR"
 
-# Copy JavaScript source to build directory
-cp src/os/index.js build/
+# Build TypeScript to JavaScript
+cd src/os
+echo "Compiling TypeScript to JavaScript..."
+bun build --outdir ../../build --target node --bundle kernel/index.ts
+cd ../../
 
 # Generate embedded JavaScript header
 echo "Generating embedded JavaScript..."
