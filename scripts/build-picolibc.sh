@@ -12,9 +12,8 @@ echo "=== Building Picolibc for i686 freestanding ==="
 # Check if picolibc exists
 if [ ! -d "$PICOLIBC_DIR" ]; then
     echo "Error: Picolibc source not found at $PICOLIBC_DIR"
-    echo "Please clone picolibc manually:"
-    echo "  git clone https://github.com/picolibc/picolibc.git"
-    exit 1
+    echo "Cloning..."
+    git clone --branch 1.8.10 https://github.com/picolibc/picolibc.git "$PICOLIBC_DIR"
 fi
 
 # Get current version

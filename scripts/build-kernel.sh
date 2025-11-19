@@ -73,5 +73,3 @@ echo ""
 echo "Running kernel in QEMU..."
 echo "(Press Ctrl+A then X to exit)"
 echo ""
-
-qemu-system-i386 -kernel "$OUT_DIR/kernel"

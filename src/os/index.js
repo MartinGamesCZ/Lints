@@ -1,20 +1,5 @@
 clearScreen();
-print("Hello World!");
-
-// writeMemory(0xb8000, 0x48);
-// writeMemory(0xb8001, 0x0f);
-
-// writeMemory(0xb8002, 0x65);
-// writeMemory(0xb8003, 0x0f);
-
-// writeMemory(0xb8004, 0x6c);
-// writeMemory(0xb8005, 0x0f);
-
-// writeMemory(0xb8006, 0x6c);
-// writeMemory(0xb8007, 0x0f);
-
-// writeMemory(0xb8008, 0x6f);
-// writeMemory(0xb8009, 0x0f);
+print("Hello, World!");
 
 function clearScreen() {
   var i = 0;
