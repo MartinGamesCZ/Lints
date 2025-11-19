@@ -3,6 +3,10 @@
 
 set -e
 
+mkdir -p lib
+
+./scripts/get_duktape.sh
+
 # Paths
 PICOLIBC_INSTALL="$(pwd)/picolibc-install"
 BUILD_DIR="build"
@@ -51,7 +55,7 @@ nasm -f elf32 src/boot/kernel.asm -o "$BUILD_DIR/kasm.o"
 
 # Build duktape
 echo "Building Duktape..."
-gcc $CFLAGS -c src/lib/duktape.c -o "$BUILD_DIR/duktape.o"
+gcc $CFLAGS -c lib/duktape/src/duktape.c -o "$BUILD_DIR/duktape.o"
 
 # Build kernel
 echo "Building kernel..."

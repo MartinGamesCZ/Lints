@@ -1,6 +1,6 @@
 #include <string.h>
 #include <stdint.h>
-#include "lib/duktape.h"
+#include <../lib/duktape/src/duktape.h>
 #include "embedded_js.h"
 
 #define WHITE_TXT 0x0F
