@@ -1,6 +1,6 @@
 #include <string.h>
 #include <stdint.h>
-#include <../lib/duktape/src/duktape.h>
+#include <duktape.h>
 #include "embedded_js.h"
 
 #define WHITE_TXT 0x0F
@@ -10,15 +10,7 @@ unsigned int k_printf(char *message, unsigned int line);
 
 duk_context *ctx;
 
-duk_ret_t native_print(duk_context *ctx)
-{
-  const char *msg = duk_to_string(ctx, 0);
-  // k_clear_screen();
-  k_printf((char *)msg, 0);
-  return 0;
-}
-
-duk_ret_t native_write_memory(duk_context *ctx)
+duk_ret_t native_addrw(duk_context *ctx)
 {
   // Get the address (first argument)
   uint32_t address = (uint32_t)duk_to_uint32(ctx, 0);
@@ -38,13 +30,9 @@ void kmain()
   // Initialize Duktape heap
   ctx = duk_create_heap_default();
 
-  // Register native print function
-  duk_push_c_function(ctx, native_print, DUK_VARARGS);
-  duk_put_global_string(ctx, "print");
-
   // Register native memory write function
-  duk_push_c_function(ctx, native_write_memory, 2);
-  duk_put_global_string(ctx, "writeMemory");
+  duk_push_c_function(ctx, native_addrw, 2);
+  duk_put_global_string(ctx, "$addrw");
 
   // Execute embedded JavaScript code from build/index.js
   duk_push_string(ctx, embedded_js_code);

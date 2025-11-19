@@ -2,4 +2,4 @@ _o/
 build/
 picolibc/
 picolibc-install/
-lib/
+/lib/

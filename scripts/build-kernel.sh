@@ -26,16 +26,19 @@ mkdir -p "$OUT_DIR"
 # Build TypeScript to JavaScript
 cd src/os
 echo "Compiling TypeScript to JavaScript..."
-bun build --outdir ../../build --target node --bundle kernel/index.ts
+bun build --outdir ../../build --target node --bundle src/index.ts
 cd ../../
 
 # Generate embedded JavaScript header
 echo "Generating embedded JavaScript..."
+bun scripts/build_js.js
 python3 scripts/embed_js.py build/index.js > "$BUILD_DIR/embedded_js.h"
+
 
 # Compiler flags
 CFLAGS="-m32 -march=i686 -ffreestanding -nostdlib -fno-builtin"
 CFLAGS="$CFLAGS -I$PICOLIBC_INSTALL/include"
+CFLAGS="$CFLAGS -I./lib/duktape/src"
 CFLAGS="$CFLAGS -I./src/lib"
 CFLAGS="$CFLAGS -I./src"
 CFLAGS="$CFLAGS -I$BUILD_DIR"
