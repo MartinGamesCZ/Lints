@@ -25,6 +25,37 @@ duk_ret_t native_addrw(duk_context *ctx)
   return 0;
 }
 
+// Port byte in
+duk_ret_t native_ptin(duk_context *ctx)
+{
+  // Get the port (first argument)
+  uint16_t port = (uint16_t)duk_to_uint32(ctx, 0);
+
+  uint8_t result;
+  __asm__ volatile("inb %1, %0"
+                   : "=a"(result)
+                   : "Nd"(port));
+
+  duk_push_uint(ctx, (duk_uint_t)result);
+  return 1;
+}
+
+// Port byte out
+duk_ret_t native_ptout(duk_context *ctx)
+{
+  // Get the port (first argument)
+  uint16_t port = (uint16_t)duk_to_uint32(ctx, 0);
+
+  // Get the value to write (second argument)
+  uint8_t value = (uint8_t)duk_to_uint32(ctx, 1);
+
+  __asm__ volatile("outb %0, %1"
+                   :
+                   : "a"(value), "Nd"(port));
+
+  return 0;
+}
+
 void kmain()
 {
   // Initialize Duktape heap
@@ -33,6 +64,14 @@ void kmain()
   // Register native memory write function
   duk_push_c_function(ctx, native_addrw, 2);
   duk_put_global_string(ctx, "$addrw");
+
+  // Register native port in function
+  duk_push_c_function(ctx, native_ptin, 1);
+  duk_put_global_string(ctx, "$ptin");
+
+  // Register native port out function
+  duk_push_c_function(ctx, native_ptout, 2);
+  duk_put_global_string(ctx, "$ptout");
 
   // Execute embedded JavaScript code from build/index.js
   duk_push_string(ctx, embedded_js_code);
