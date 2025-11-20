@@ -1,6 +1,8 @@
 import { dwordin, dwordout } from "../../../lib/libts/dword";
 import { portin, portout } from "../../../lib/libts/port";
 import { Logger } from "../../../lib/libstd/logger/logger.kmod";
+import { sysfs_mkdir, sysfs_writeFile } from "../../filesystem/sysfs";
+import { Path } from "../../../lib/libstd/path";
 
 const KDRIVER_PCI_CONFIG_ADDR = 0xcf8;
 const KDRIVER_PCI_CONFIG_DATA = 0xcfc;
@@ -37,13 +39,11 @@ export function kdriver_dev_pci_checkDevice(
   const classCode = kdriver_dev_pci_getClassCode(bus, device, func);
   const subclass = kdriver_dev_pci_getSubclass(bus, device, func);
 
+  const filename = bus + ":" + device + ":" + func;
+
   Logger.log(
     "[PCI] Found device pci:" +
-      bus +
-      ":" +
-      device +
-      ":" +
-      func +
+      filename +
       " (vendor:" +
       vendorId.toString(16) +
       ", device:" +
@@ -54,6 +54,14 @@ export function kdriver_dev_pci_checkDevice(
       subclass.toString(16) +
       ")"
   );
+
+  const dirname = Path.join("/pci", filename);
+
+  sysfs_mkdir(dirname);
+  sysfs_writeFile(Path.join(dirname, "vendor"), vendorId);
+  sysfs_writeFile(Path.join(dirname, "device"), deviceId);
+  sysfs_writeFile(Path.join(dirname, "class"), classCode);
+  sysfs_writeFile(Path.join(dirname, "subclass"), subclass);
 }
 
 export function kdriver_dev_pci_getDeviceId(
