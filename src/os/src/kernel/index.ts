@@ -1,6 +1,7 @@
 import { charc } from "../lib/libts/byte";
 import { padStart } from "../lib/libts/string";
 import { getDate } from "../lib/sys/date";
+import { kdriver_dev_pci_detectDevices } from "./drivers/dev/pci";
 import {
   kdriver_etc_serial_read,
   kdriver_etc_serial_transmit,
@@ -20,20 +21,9 @@ export function kmain() {
 
   kmod_drivers_register();
 
-  kdriver_etc_serial_transmit(charc("H"));
-  kdriver_etc_serial_transmit(charc("e"));
-  kdriver_etc_serial_transmit(charc("l"));
-  kdriver_etc_serial_transmit(charc("l"));
-  kdriver_etc_serial_transmit(charc("o"));
+  kdriver_dev_pci_detectDevices();
 
   kmod_graphics_vga_init();
   kmod_graphics_vga_pushLine("[Kernel] Kernel initialized successfully.");
   kmod_graphics_vga_pushLine("Current date: " + getDate().toDateString());
-
-  while (true) {
-    const d = kdriver_etc_serial_read();
-    kmod_graphics_vga_pushLine(
-      "Serial input: 0x" + padStart(d.toString(16), 2, "0")
-    );
-  }
 }
