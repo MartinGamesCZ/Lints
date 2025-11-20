@@ -1,3 +1,4 @@
+import { Logger } from "../lib/libstd/logger/logger.kmod";
 import { charc } from "../lib/libts/byte";
 import { padStart } from "../lib/libts/string";
 import { getDate } from "../lib/sys/date";
@@ -20,9 +21,12 @@ export function kmain() {
   kmod_drivers_init();
 
   kmod_drivers_register();
+  Logger.log("[Kernel] Drivers initialized.");
 
+  Logger.log("[Kernel] Initializing PCI...");
   kdriver_dev_pci_detectDevices();
 
+  Logger.log("[Kernel] Initializing VGA module...");
   kmod_graphics_vga_init();
   kmod_graphics_vga_pushLine("[Kernel] Kernel initialized successfully.");
   kmod_graphics_vga_pushLine("Current date: " + getDate().toDateString());
