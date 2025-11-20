@@ -37,6 +37,7 @@ python3 scripts/embed_js.py build/index.js > "$BUILD_DIR/embedded_js.h"
 
 # Compiler flags
 CFLAGS="-m32 -march=i686 -ffreestanding -nostdlib -fno-builtin"
+CFLAGS="$CFLAGS -mno-sse -mno-sse2 -mno-mmx -mno-3dnow"
 CFLAGS="$CFLAGS -I$PICOLIBC_INSTALL/include"
 CFLAGS="$CFLAGS -I./lib/duktape/src"
 CFLAGS="$CFLAGS -I./src/lib"
@@ -56,9 +57,18 @@ echo "=== Building kernel with picolibc ==="
 echo "Assembling boot code..."
 nasm -f elf32 src/boot/kernel.asm -o "$BUILD_DIR/kasm.o"
 
+# Build interrupt assembly
+echo "Assembling interrupt handlers..."
+nasm -f elf32 src/kernel/interrupt/interrupt.asm -o "$BUILD_DIR/interrupt.o"
+
 # Build duktape
 echo "Building Duktape..."
 gcc $CFLAGS -c lib/duktape/src/duktape.c -o "$BUILD_DIR/duktape.o"
+
+# Build interrupt system
+echo "Building interrupt system..."
+gcc $CFLAGS -c src/kernel/interrupt/idt.c -o "$BUILD_DIR/idt.o"
+gcc $CFLAGS -c src/kernel/interrupt/isr.c -o "$BUILD_DIR/isr.o"
 
 # Build kernel
 echo "Building kernel..."
@@ -72,6 +82,9 @@ gcc $CFLAGS -c src/lib/syscalls.c -o "$BUILD_DIR/syscalls.o"
 echo "Linking kernel..."
 ld $LDFLAGS -T src/link.ld -o "$OUT_DIR/kernel" \
     "$BUILD_DIR/kasm.o" \
+    "$BUILD_DIR/interrupt.o" \
+    "$BUILD_DIR/idt.o" \
+    "$BUILD_DIR/isr.o" \
     "$BUILD_DIR/kc.o" \
     "$BUILD_DIR/duktape.o" \
     "$BUILD_DIR/syscalls.o" \

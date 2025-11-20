@@ -22,6 +22,10 @@ import {
   kmod_graphics_vga_init,
   kmod_graphics_vga_pushLine,
 } from "./modules/graphics/graphics.kmod";
+import {
+  kmod_terminal_input_init,
+  kmod_terminal_input_onKeyboardInput,
+} from "./modules/terminal/input";
 
 export function kmain() {
   kmod_drivers_init();
@@ -33,14 +37,17 @@ export function kmain() {
   kmod_filesystem_init();
   kmod_filesystem_mount("/sys", sysfs_driver);
 
+  Logger.log("[Kernel] Initializing terminal module...");
+  kmod_terminal_input_init();
+
   Logger.log("[Kernel] Initializing PCI devices...");
   kdriver_dev_pci_detectDevices();
 
   Logger.log("[Kernel] Initializing VGA module...");
   kmod_graphics_vga_init();
   kmod_graphics_vga_pushLine("[Kernel] Kernel initialized successfully.");
-  kmod_graphics_vga_pushLine("Current date: " + getDate().toDateString());
-  kmod_graphics_vga_pushLine(
-    Number(kmod_filesystem_readFile("/sys/pci/0:1:0/vendor")).toString(16)
-  );
+
+  kmod_terminal_input_onKeyboardInput(function (keycode) {
+    kmod_graphics_vga_pushLine(keycode);
+  });
 }
