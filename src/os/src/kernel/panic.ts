@@ -1,7 +1,7 @@
 import {
   kmod_graphics_vga_clear,
   kmod_graphics_vga_writeChar,
-} from "./modules/graphics/vga";
+} from "./modules/graphics/graphics.kmod";
 
 export function kpanic(reason?: string) {
   kmod_graphics_vga_clear();

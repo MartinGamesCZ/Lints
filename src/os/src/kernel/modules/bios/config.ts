@@ -1,0 +1,2 @@
+export const CFG_KMOD_BIOS_TIME_CMOS_ADDR = 0x70;
+export const CFG_KMOD_BIOS_TIME_CMOS_DATA_ADDR = 0x71;
