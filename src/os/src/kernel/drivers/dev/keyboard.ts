@@ -11,6 +11,8 @@ export function kdriver_dev_keyboard_handleInterrupt(): void {
     | keyof typeof Keycode
     | undefined;
 
+  //Logger.log(String(scancode));
+
   if (key == undefined) return;
 
   kmod_terminal_input_handleKeyboardInput(key);

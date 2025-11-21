@@ -116,6 +116,33 @@ duk_ret_t native_dword_out(duk_context *ctx)
   return 0;
 }
 
+duk_ret_t native_word_in(duk_context *ctx)
+{
+  uint16_t port = (uint16_t)duk_to_uint32(ctx, 0);
+
+  uint16_t result;
+  __asm__ volatile("inw %1, %0"
+                   : "=a"(result)
+                   : "Nd"(port));
+
+  duk_push_uint(ctx, (duk_uint_t)result);
+  return 1;
+}
+
+duk_ret_t native_word_out(duk_context *ctx)
+{
+  uint16_t port = (uint16_t)duk_to_uint32(ctx, 0);
+
+  // Get the value to write (second argument)
+  uint16_t value = (uint16_t)duk_to_uint32(ctx, 1);
+
+  __asm__ volatile("outw %0, %1"
+                   :
+                   : "a"(value), "Nd"(port));
+
+  return 0;
+}
+
 // Global context for IRQ handlers
 duk_context *global_ctx = NULL;
 
@@ -228,6 +255,14 @@ void kmain()
   // Register native dword out function
   duk_push_c_function(ctx, native_dword_out, 2);
   duk_put_global_string(ctx, "$dwordout");
+
+  // Register native dword in function
+  duk_push_c_function(ctx, native_word_in, 1);
+  duk_put_global_string(ctx, "$wordin");
+
+  // Register native dword out function
+  duk_push_c_function(ctx, native_word_out, 2);
+  duk_put_global_string(ctx, "$wordout");
 
   // Register native IRQ registration function
   duk_push_c_function(ctx, native_irq_register, 2);

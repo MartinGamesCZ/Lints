@@ -6,12 +6,17 @@ import {
 } from "./config";
 
 let kmod_graphics_vga_lineBuf: string[] = [];
+let init = false;
 
 export function kmod_graphics_vga_init() {
+  init = true;
+
   kmod_graphics_vga_clear();
 }
 
 export function kmod_graphics_vga_pushLine(line: string) {
+  if (!init) return;
+
   kmod_graphics_vga_lineBuf.push(line);
 
   if (kmod_graphics_vga_lineBuf.length > CFG_KMOD_GRAPHICS_VGA_HEIGHT) {
@@ -21,7 +26,21 @@ export function kmod_graphics_vga_pushLine(line: string) {
   kmod_graphics_vga_printLines();
 }
 
+export function kmod_graphics_vga_setLastLine(line: string) {
+  if (!init) return;
+
+  if (kmod_graphics_vga_lineBuf.length === 0) {
+    kmod_graphics_vga_lineBuf.push(line);
+  } else {
+    kmod_graphics_vga_lineBuf[kmod_graphics_vga_lineBuf.length - 1] = line;
+  }
+
+  kmod_graphics_vga_printLines();
+}
+
 export function kmod_graphics_vga_printLines() {
+  if (!init) return;
+
   for (let y = 0; y < CFG_KMOD_GRAPHICS_VGA_HEIGHT; y++) {
     const line = kmod_graphics_vga_lineBuf[y] || "";
 
@@ -49,6 +68,8 @@ export function kmod_graphics_vga_getColorAddr(x: number, y: number): number {
 }
 
 export function kmod_graphics_vga_clear() {
+  if (!init) return;
+
   kmod_graphics_vga_lineBuf = [];
 
   for (let y = 0; y < CFG_KMOD_GRAPHICS_VGA_HEIGHT; y++) {
@@ -64,6 +85,8 @@ export function kmod_graphics_vga_writeChar(
   char: string,
   color: number
 ) {
+  if (!init) return;
+
   const charAddr = kmod_graphics_vga_getCharAddr(x, y);
   const colorAddr = kmod_graphics_vga_getColorAddr(x, y);
 

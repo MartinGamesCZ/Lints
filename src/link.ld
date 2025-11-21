@@ -26,15 +26,15 @@ SECTIONS
 		*(COMMON)
 	}
 	
+	/* Stack grows downward from high memory - place before heap */
+	. = ALIGN(4096);
+	__stack_bottom = .;
+	. = . + 0x100000; /* 1MB stack */
+	__stack_top = .;
+	
 	/* Heap for malloc */
 	. = ALIGN(4096);
 	__heap_start = .;
-	. = . + 0x100000; /* 1MB heap */
+	. = . + 0x10000000; /* 256MB heap */
 	__heap_end = .;
-	
-	/* Stack grows downward from high memory */
-	. = ALIGN(4096);
-	__stack_bottom = .;
-	. = . + 0x10000; /* 64KB stack */
-	__stack_top = .;
 }

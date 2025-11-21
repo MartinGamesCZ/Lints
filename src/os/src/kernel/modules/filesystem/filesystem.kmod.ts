@@ -1,4 +1,5 @@
 import { Logger } from "../../../lib/libstd/logger/logger.kmod";
+import { Path } from "../../../lib/libstd/path";
 import type {
   KFilesystemDriver,
   KFilesystemEntity,
@@ -48,24 +49,42 @@ export function kmod_filesystem_stripMountpoint(
   return p.slice(mount.mountpoint.length) || "/";
 }
 
+export function kmod_filesystem_lsMountAsFsEntity() {
+  let out: KFilesystemEntity[] = [];
+
+  for (let i = 0; i < kmod_filesystem_data.length; i++) {
+    const mount = kmod_filesystem_data[i]!;
+
+    out.push({
+      name: Path.filename(mount.mountpoint),
+      path: mount.mountpoint,
+      type: "folder",
+      size: 0,
+      contents: 0,
+    });
+  }
+
+  return out;
+}
+
 export function kmod_filesystem_listDir(
   path: string
 ): KFilesystemEntity[] | null {
   const mount = kmod_filesystem_findMount(path);
-  if (!mount) return null;
+  if (!mount) return kmod_filesystem_lsMountAsFsEntity();
 
   const strippedPath = kmod_filesystem_stripMountpoint(mount, path);
 
   return mount.driver.listDir(strippedPath);
 }
 
-export function kmod_filesystem_readFile(path: string): unknown {
+export function kmod_filesystem_readFile(path: string): number[] | null {
   const mount = kmod_filesystem_findMount(path);
   if (!mount) return null;
 
   const strippedPath = kmod_filesystem_stripMountpoint(mount, path);
 
-  return mount.driver.readFile(strippedPath);
+  return mount.driver.readFile(strippedPath) as number[];
 }
 
 export function kmod_filesystem_writeFile(
@@ -109,3 +128,9 @@ export function kmod_filesystem_stat(path: string): KFilesystemStat | null {
 
   return mount.driver.stat(strippedPath);
 }
+
+export function kmod_filesystem_directRead(
+  path: string,
+  count: number,
+  offset: number
+) {}

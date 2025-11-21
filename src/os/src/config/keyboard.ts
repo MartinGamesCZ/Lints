@@ -1,4 +1,5 @@
 export const Keycode = {
+  Enter: 28,
   Q: 16,
   W: 17,
   E: 18,
@@ -25,9 +26,12 @@ export const Keycode = {
   B: 48,
   N: 49,
   M: 50,
+  ".": 52,
+  "/": 53,
 };
 
 export const RKeycode = {
+  28: "Enter",
   16: "Q",
   17: "W",
   18: "E",
@@ -54,4 +58,6 @@ export const RKeycode = {
   48: "B",
   49: "N",
   50: "M",
+  52: ".",
+  53: "/",
 };
