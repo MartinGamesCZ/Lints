@@ -3,3 +3,5 @@ build/
 picolibc/
 picolibc-install/
 /lib/
+*.iso
+*.img
