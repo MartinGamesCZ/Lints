@@ -1,6 +1,7 @@
 import { Logger } from "../lib/libstd/logger/logger.kmod";
 import { charc } from "../lib/libts/byte";
 import { padStart } from "../lib/libts/string";
+import { uiarrtostr } from "../lib/libts/uint_arr";
 import { getDate } from "../lib/sys/date";
 import { kdriver_dev_ata_detectDisks } from "./drivers/dev/ata";
 import { kdriver_dev_pci_detectDevices } from "./drivers/dev/pci";
@@ -11,6 +12,7 @@ import {
 import { devfs_driver, devfs_getDevice } from "./filesystem/devfs";
 import { fat32_driver } from "./filesystem/fat32";
 import { sysfs_driver, sysfs_readFile } from "./filesystem/sysfs";
+import { kmod_app_init, kmod_app_run } from "./modules/app/app.kmod";
 import { kmod_disks_detectDisks } from "./modules/disks/disks.kmod";
 import {
   kmod_drivers_init,
@@ -56,42 +58,19 @@ export function kmain() {
   Logger.log("[Kernel] Initializing drives...");
   kmod_disks_detectDisks();
 
-  kmod_graphics_vga_pushLine("[Kernel] Kernel initialized successfully.");
-
   const dev = devfs_getDevice("/hda1");
-  if (!dev) throw new Error("Drive not found");
-
-  kmod_filesystem_mount("/home", function () {
+  if (!dev) throw new Error("System drive not found");
+  
+  kmod_filesystem_mount("/disk", function () {
     return fat32_driver(dev.driver, dev.data);
   });
 
-  let input = "";
-  let running = false;
+  Logger.log("[Kernel] Initializing app module...");
+  kmod_app_init();
 
-  kmod_graphics_vga_setLastLine("> ");
+  Logger.log("[Kernel] Kernel initialized successfully.");
 
-  kmod_terminal_input_onKeyboardInput(function (code) {
-    if (running) return;
+  const shell = uiarrtostr(kmod_filesystem_readFile("/disk/ushellc")!);
 
-    if (code == "Enter") {
-      running = true;
-      kmod_graphics_vga_pushLine("Starting " + input);
-      const f = kmod_filesystem_readFile(input);
-      if (!f) return;
-
-      let app = "";
-
-      for (let i = 0; i < f.length; i++) {
-        app += String.fromCharCode(f[i]!);
-      }
-
-      // EXTREMELY DANGEROUS -- REPLACE WITH SANDBOXING
-      eval("const console = { log: Logger.log } ;" + app);
-      Logger.log("DONE");
-      running = false;
-    } else {
-      input += code.toLowerCase();
-      kmod_graphics_vga_setLastLine("> " + input);
-    }
-  });
+  kmod_app_run(shell);
 }

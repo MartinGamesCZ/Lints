@@ -218,6 +218,408 @@ duk_ret_t native_irq_register(duk_context *ctx)
   return 1;
 }
 
+// Proxy getter for __oskrnl that forwards to root context's globalThis.__oskrnl
+duk_ret_t oskrnl_proxy_getter(duk_context *isolated_ctx)
+{
+  // Get the property name being accessed
+  const char *prop_name = duk_require_string(isolated_ctx, 1);
+
+  // Get the root context from the hidden symbol in the isolated context
+  duk_push_global_stash(isolated_ctx);
+  duk_get_prop_string(isolated_ctx, -1, "\xFF"
+                                        "root_ctx_ptr");
+  duk_context *root_ctx = (duk_context *)duk_get_pointer(isolated_ctx, -1);
+  duk_pop_2(isolated_ctx);
+
+  if (root_ctx == NULL)
+  {
+    duk_push_undefined(isolated_ctx);
+    return 1;
+  }
+
+  // Access globalThis.__oskrnl[prop_name] in the root context
+  duk_push_global_object(root_ctx);
+  duk_get_prop_string(root_ctx, -1, "__oskrnl");
+
+  if (!duk_is_object(root_ctx, -1))
+  {
+    duk_pop_2(root_ctx);
+    duk_push_undefined(isolated_ctx);
+    return 1;
+  }
+
+  duk_get_prop_string(root_ctx, -1, prop_name);
+
+  // If it's a function, we need to create a wrapper that calls it in root context
+  if (duk_is_function(root_ctx, -1))
+  {
+    // Store the function reference in root context's stash
+    char stash_key[128];
+    snprintf(stash_key, sizeof(stash_key), "\xFF"
+                                           "oskrnl_fn_%s",
+             prop_name);
+
+    duk_push_global_stash(root_ctx);
+    duk_dup(root_ctx, -2); // Duplicate the function
+    duk_put_prop_string(root_ctx, -2, stash_key);
+    duk_pop(root_ctx); // Pop stash
+
+    duk_pop_3(root_ctx); // Pop function, __oskrnl, globalThis
+
+    // Create a wrapper function in the isolated context
+    // Use ES5 syntax compatible with Duktape
+    const char *wrapper_code =
+        "(function(propName) {"
+        "  return function() {"
+        "    var args = Array.prototype.slice.call(arguments);"
+        "    return __oskrnl_call_native(propName, args);"
+        "  };"
+        "})";
+
+    duk_push_string(isolated_ctx, wrapper_code);
+    if (duk_peval(isolated_ctx) != 0)
+    {
+      duk_pop(isolated_ctx);
+      duk_push_undefined(isolated_ctx);
+      return 1;
+    }
+
+    duk_push_string(isolated_ctx, prop_name);
+    if (duk_pcall(isolated_ctx, 1) != 0)
+    {
+      duk_pop(isolated_ctx);
+      duk_push_undefined(isolated_ctx);
+      return 1;
+    }
+
+    return 1;
+  }
+
+  // For non-function properties, just get the value (primitives)
+  if (duk_is_number(root_ctx, -1))
+  {
+    double val = duk_get_number(root_ctx, -1);
+    duk_pop_3(root_ctx);
+    duk_push_number(isolated_ctx, val);
+    return 1;
+  }
+  else if (duk_is_string(root_ctx, -1))
+  {
+    const char *val = duk_get_string(root_ctx, -1);
+    duk_pop_3(root_ctx);
+    duk_push_string(isolated_ctx, val);
+    return 1;
+  }
+  else if (duk_is_boolean(root_ctx, -1))
+  {
+    int val = duk_get_boolean(root_ctx, -1);
+    duk_pop_3(root_ctx);
+    duk_push_boolean(isolated_ctx, val);
+    return 1;
+  }
+
+  duk_pop_3(root_ctx);
+  duk_push_undefined(isolated_ctx);
+  return 1;
+}
+
+// Callback bridge to call from root context back to isolated context
+duk_ret_t native_bridge_callback(duk_context *root_ctx)
+{
+  // Get metadata from the current function (the bridge)
+  duk_push_current_function(root_ctx);
+
+  duk_get_prop_string(root_ctx, -1, "\xFF"
+                                    "isolated_ctx_ptr");
+  duk_context *isolated_ctx = (duk_context *)duk_get_pointer(root_ctx, -1);
+  duk_pop(root_ctx);
+
+  duk_get_prop_string(root_ctx, -1, "\xFF"
+                                    "fn_id");
+  const char *fn_id = duk_get_string(root_ctx, -1);
+  duk_pop(root_ctx);
+
+  duk_pop(root_ctx); // Pop current function
+
+  if (isolated_ctx == NULL || fn_id == NULL)
+  {
+    return 0;
+  }
+
+  // Get the target function from isolated context stash
+  duk_push_global_stash(isolated_ctx);
+  duk_get_prop_string(isolated_ctx, -1, fn_id);
+  duk_remove(isolated_ctx, -2); // Remove stash
+
+  if (!duk_is_function(isolated_ctx, -1))
+  {
+    duk_pop(isolated_ctx);
+    return 0;
+  }
+
+  // Marshal arguments from root to isolated
+  duk_idx_t nargs = duk_get_top(root_ctx);
+  for (duk_idx_t i = 0; i < nargs; i++)
+  {
+    if (duk_is_number(root_ctx, i))
+    {
+      duk_push_number(isolated_ctx, duk_get_number(root_ctx, i));
+    }
+    else if (duk_is_string(root_ctx, i))
+    {
+      duk_push_string(isolated_ctx, duk_get_string(root_ctx, i));
+    }
+    else if (duk_is_boolean(root_ctx, i))
+    {
+      duk_push_boolean(isolated_ctx, duk_get_boolean(root_ctx, i));
+    }
+    else
+    {
+      duk_push_undefined(isolated_ctx);
+    }
+  }
+
+  // Call the isolated function
+  if (duk_pcall(isolated_ctx, nargs) != 0)
+  {
+    // Error occurred
+    const char *err = duk_safe_to_string(isolated_ctx, -1);
+    // k_printf((char *)"[Bridge] Error: ", 24);
+    // k_printf((char *)err, 25);
+    duk_pop(isolated_ctx); // Pop error
+    return 0;
+  }
+
+  // Marshal return value back to root
+  if (duk_is_number(isolated_ctx, -1))
+  {
+    duk_push_number(root_ctx, duk_get_number(isolated_ctx, -1));
+  }
+  else if (duk_is_string(isolated_ctx, -1))
+  {
+    duk_push_string(root_ctx, duk_get_string(isolated_ctx, -1));
+  }
+  else if (duk_is_boolean(isolated_ctx, -1))
+  {
+    duk_push_boolean(root_ctx, duk_get_boolean(isolated_ctx, -1));
+  }
+  else
+  {
+    duk_push_undefined(root_ctx);
+  }
+
+  duk_pop(isolated_ctx); // Pop result
+
+  return 1;
+}
+
+// Native helper to call root context oskrnl functions
+duk_ret_t oskrnl_call_native(duk_context *isolated_ctx)
+{
+  // Get function name and arguments
+  const char *fn_name = duk_require_string(isolated_ctx, 0);
+
+  if (!duk_is_array(isolated_ctx, 1))
+  {
+    duk_push_undefined(isolated_ctx);
+    return 1;
+  }
+
+  // Get the root context
+  duk_push_global_stash(isolated_ctx);
+  duk_get_prop_string(isolated_ctx, -1, "\xFF"
+                                        "root_ctx_ptr");
+  duk_context *root_ctx = (duk_context *)duk_get_pointer(isolated_ctx, -1);
+  duk_pop_2(isolated_ctx);
+
+  if (root_ctx == NULL)
+  {
+    duk_push_undefined(isolated_ctx);
+    return 1;
+  }
+
+  // Get the function from root context stash
+  char stash_key[128];
+  snprintf(stash_key, sizeof(stash_key), "\xFF"
+                                         "oskrnl_fn_%s",
+           fn_name);
+
+  duk_push_global_stash(root_ctx);
+  duk_get_prop_string(root_ctx, -1, stash_key);
+
+  if (!duk_is_function(root_ctx, -1))
+  {
+    duk_pop_2(root_ctx);
+    duk_push_undefined(isolated_ctx);
+    return 1;
+  }
+
+  // Transfer arguments from isolated context to root context
+  duk_size_t arg_count = duk_get_length(isolated_ctx, 1);
+
+  for (duk_size_t i = 0; i < arg_count; i++)
+  {
+    duk_get_prop_index(isolated_ctx, 1, i);
+
+    if (duk_is_number(isolated_ctx, -1))
+    {
+      duk_push_number(root_ctx, duk_get_number(isolated_ctx, -1));
+    }
+    else if (duk_is_string(isolated_ctx, -1))
+    {
+      duk_push_string(root_ctx, duk_get_string(isolated_ctx, -1));
+    }
+    else if (duk_is_boolean(isolated_ctx, -1))
+    {
+      duk_push_boolean(root_ctx, duk_get_boolean(isolated_ctx, -1));
+    }
+    else if (duk_is_function(isolated_ctx, -1))
+    {
+      // Create a bridge function in root context
+      static int bridge_cnt = 0;
+      char bridge_id[32];
+      snprintf(bridge_id, sizeof(bridge_id), "b_%d", bridge_cnt++);
+
+      // Stash isolated function
+      duk_push_global_stash(isolated_ctx);
+      duk_dup(isolated_ctx, -2);
+      duk_put_prop_string(isolated_ctx, -2, bridge_id);
+      duk_pop(isolated_ctx);
+
+      // Create bridge in root
+      duk_push_c_function(root_ctx, native_bridge_callback, DUK_VARARGS);
+
+      // Attach metadata
+      duk_push_pointer(root_ctx, isolated_ctx);
+      duk_put_prop_string(root_ctx, -2, "\xFF"
+                                        "isolated_ctx_ptr");
+
+      duk_push_string(root_ctx, bridge_id);
+      duk_put_prop_string(root_ctx, -2, "\xFF"
+                                        "fn_id");
+    }
+    else
+    {
+      duk_push_undefined(root_ctx);
+    }
+
+    duk_pop(isolated_ctx);
+  }
+
+  // Call the function in root context
+  duk_int_t rc = duk_pcall(root_ctx, arg_count);
+
+  // Transfer return value back to isolated context
+  if (rc == 0)
+  {
+    if (duk_is_number(root_ctx, -1))
+    {
+      duk_push_number(isolated_ctx, duk_get_number(root_ctx, -1));
+    }
+    else if (duk_is_string(root_ctx, -1))
+    {
+      duk_push_string(isolated_ctx, duk_get_string(root_ctx, -1));
+    }
+    else if (duk_is_boolean(root_ctx, -1))
+    {
+      duk_push_boolean(isolated_ctx, duk_get_boolean(root_ctx, -1));
+    }
+    else
+    {
+      duk_push_undefined(isolated_ctx);
+    }
+    duk_pop(root_ctx); // Pop result
+  }
+  else
+  {
+    duk_pop(root_ctx); // Pop error
+    duk_push_undefined(isolated_ctx);
+  }
+
+  duk_pop(root_ctx); // Pop stash
+
+  return 1;
+}
+
+// Native function to execute JS code in isolated context with __oskrnl access
+duk_ret_t native_isolated_exec(duk_context *ctx)
+{
+  // Get the JS code to execute
+  const char *js_code = duk_require_string(ctx, 0);
+
+  // Create a new isolated Duktape heap
+  duk_context *isolated_ctx = duk_create_heap_default();
+
+  if (isolated_ctx == NULL)
+  {
+    duk_push_boolean(ctx, 0);
+    return 1;
+  }
+
+  // Store reference to root context in isolated context's stash
+  duk_push_global_stash(isolated_ctx);
+  duk_push_pointer(isolated_ctx, ctx);
+  duk_put_prop_string(isolated_ctx, -2, "\xFF"
+                                        "root_ctx_ptr");
+  duk_pop(isolated_ctx);
+
+  // Register the native call helper in isolated context
+  duk_push_c_function(isolated_ctx, oskrnl_call_native, 2);
+  duk_put_global_string(isolated_ctx, "__oskrnl_call_native");
+
+  // Register the getter function
+  duk_push_c_function(isolated_ctx, oskrnl_proxy_getter, 2);
+  duk_put_global_string(isolated_ctx, "__oskrnl_get_prop");
+
+  // Create __oskrnl proxy object using ES6 Proxy
+  const char *proxy_code =
+      "(function() {"
+      "  var handler = {"
+      "    get: function(target, prop) {"
+      "      if (typeof prop === 'symbol') return undefined;"
+      "      return __oskrnl_get_prop(null, String(prop));"
+      "    }"
+      "  };"
+      "  return new Proxy({}, handler);"
+      "})()";
+
+  duk_push_string(isolated_ctx, proxy_code);
+
+  if (duk_peval(isolated_ctx) != 0)
+  {
+    duk_pop(isolated_ctx);
+    duk_destroy_heap(isolated_ctx);
+    duk_push_boolean(ctx, 0);
+    return 1;
+  }
+
+  duk_put_global_string(isolated_ctx, "__oskrnl");
+
+  // Execute the provided JS code
+  duk_push_string(isolated_ctx, js_code);
+  duk_int_t rc = duk_peval(isolated_ctx);
+
+  // Check for errors
+  int success = (rc == 0);
+
+  if (!success)
+  {
+    // Transfer error message back to root context for display
+    const char *err = duk_safe_to_string(isolated_ctx, -1);
+    k_printf((char *)"[Isolated] Execution error: ", 12);
+    k_printf((char *)err, 13);
+  }
+
+  duk_pop(isolated_ctx); // Pop result or error
+
+  // Clean up the isolated heap
+  // duk_destroy_heap(isolated_ctx);
+
+  // Return success/failure
+  duk_push_boolean(ctx, success);
+  return 1;
+}
+
 void kmain()
 {
   // Initialize IDT and ISRs
@@ -267,6 +669,10 @@ void kmain()
   // Register native IRQ registration function
   duk_push_c_function(ctx, native_irq_register, 2);
   duk_put_global_string(ctx, "$irqregister");
+
+  // Register native isolated execution function
+  duk_push_c_function(ctx, native_isolated_exec, 1);
+  duk_put_global_string(ctx, "$isolatedExec");
 
   // Enable interrupts before JavaScript execution
   __asm__ volatile("sti");
