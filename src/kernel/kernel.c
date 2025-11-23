@@ -146,6 +146,22 @@ duk_ret_t native_word_out(duk_context *ctx)
 // Global context for IRQ handlers
 duk_context *global_ctx = NULL;
 
+// Pending heaps to destroy
+duk_context *pending_heaps[16];
+int pending_heaps_count = 0;
+
+void process_pending_heaps()
+{
+  for (int i = 0; i < pending_heaps_count; i++)
+  {
+    if (pending_heaps[i] != NULL)
+    {
+      duk_destroy_heap(pending_heaps[i]);
+    }
+  }
+  pending_heaps_count = 0;
+}
+
 // JavaScript IRQ wrapper
 void js_irq_callback(registers_t *r)
 {
@@ -187,6 +203,9 @@ void js_irq_callback(registers_t *r)
   }
 
   duk_pop(global_ctx); // Pop stash
+
+  // Process any pending heaps
+  process_pending_heaps();
 }
 
 // Native function to register IRQ from JavaScript
@@ -616,8 +635,27 @@ duk_ret_t native_isolated_exec(duk_context *ctx)
   // duk_destroy_heap(isolated_ctx);
 
   // Return success/failure
-  duk_push_boolean(ctx, success);
+  // Return the heap pointer as a number (uint32_t)
+  duk_push_uint(ctx, (duk_uint_t)isolated_ctx);
   return 1;
+}
+
+// Native function to destroy an isolated heap
+duk_ret_t native_destroy_isolated_heap(duk_context *ctx)
+{
+  // Get the heap pointer
+  duk_uint_t heap_ptr = duk_require_uint(ctx, 0);
+  duk_context *isolated_ctx = (duk_context *)heap_ptr;
+
+  if (isolated_ctx != NULL)
+  {
+    if (pending_heaps_count < 16)
+    {
+      pending_heaps[pending_heaps_count++] = isolated_ctx;
+    }
+  }
+
+  return 0;
 }
 
 void kmain()
@@ -673,6 +711,10 @@ void kmain()
   // Register native isolated execution function
   duk_push_c_function(ctx, native_isolated_exec, 1);
   duk_put_global_string(ctx, "$isolatedExec");
+
+  // Register native isolated heap destruction function
+  duk_push_c_function(ctx, native_destroy_isolated_heap, 1);
+  duk_put_global_string(ctx, "$destroyIsolatedHeap");
 
   // Enable interrupts before JavaScript execution
   __asm__ volatile("sti");

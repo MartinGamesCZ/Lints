@@ -75,6 +75,9 @@ export function fat32_driver(driver: any, data: any): KFilesystemDriver {
     directRead(path: string, count: number, offset: number) {
       return fat32_directRead(state, path, count, offset);
     },
+    rm(path: string): void {
+      throw new Error("Cannot remove objects in fat32.");
+    },
   };
 }
 

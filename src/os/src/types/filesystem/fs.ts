@@ -17,6 +17,7 @@ export type KFilesystemDriver = {
   writeFile(path: string, content: unknown): void;
   createFile(path: string, content: unknown): void;
   mkdir(path: string): void;
+  rm(path: string): void;
   stat(path: string): KFilesystemStat | null;
   directRead?(
     path: string,

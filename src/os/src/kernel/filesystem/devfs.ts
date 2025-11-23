@@ -35,6 +35,9 @@ export function devfs_driver(): KFilesystemDriver {
     stat(path: string): KFilesystemStat | null {
       return devfs_statEntity(path);
     },
+    rm(path: string): void {
+      throw new Error("Cannot remove objects in devfs.")
+    }
   };
 }
 

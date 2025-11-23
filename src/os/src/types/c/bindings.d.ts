@@ -11,5 +11,5 @@ declare const $irqregister: (
   irq: number,
   handler: (irqNum: number) => void
 ) => boolean;
-declare function $isolatedExec(code: string): void;
-
+declare function $isolatedExec(code: string): number;
+declare function $destroyIsolatedHeap(handle: number): void;

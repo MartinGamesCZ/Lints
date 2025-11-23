@@ -11,6 +11,7 @@ import {
 } from "./drivers/etc/serial";
 import { devfs_driver, devfs_getDevice } from "./filesystem/devfs";
 import { fat32_driver } from "./filesystem/fat32";
+import { procfs_driver } from "./filesystem/procfs";
 import { sysfs_driver, sysfs_readFile } from "./filesystem/sysfs";
 import { kmod_app_init, kmod_app_run } from "./modules/app/app.kmod";
 import { kmod_disks_detectDisks } from "./modules/disks/disks.kmod";
@@ -48,6 +49,7 @@ export function kmain() {
   kmod_filesystem_init();
   kmod_filesystem_mount("/sys", sysfs_driver);
   kmod_filesystem_mount("/dev", devfs_driver);
+  kmod_filesystem_mount("/proc", procfs_driver);
 
   Logger.log("[Kernel] Initializing terminal module...");
   kmod_terminal_input_init();
@@ -60,7 +62,7 @@ export function kmain() {
 
   const dev = devfs_getDevice("/hda1");
   if (!dev) throw new Error("System drive not found");
-  
+
   kmod_filesystem_mount("/disk", function () {
     return fat32_driver(dev.driver, dev.data);
   });
@@ -72,5 +74,5 @@ export function kmain() {
 
   const shell = uiarrtostr(kmod_filesystem_readFile("/disk/ushellc")!);
 
-  kmod_app_run(shell);
+  kmod_app_run(shell, "");
 }
