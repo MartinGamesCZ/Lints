@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+// Taken from: https://github.com/AndreVallestero/minimal-efi/blob/master/main.c
 typedef struct EfiTableHeader {
     uint64_t  signature;
     uint32_t  revision;
