@@ -1,0 +1,29 @@
+name: Build ISO and Upload Artifact
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Make scripts executable
+        run: chmod +x ./scripts/build_c.sh ./scripts/out_to_iso.sh
+
+      - name: Run build_c.sh
+        run: ./scripts/build_c.sh
+
+      - name: Run out_to_iso.sh
+        run: ./scripts/out_to_iso.sh
+
+      - name: Upload ISO artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-iso
+          path: out/lints.iso
