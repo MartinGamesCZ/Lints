@@ -1,7 +1,4 @@
-_o/
-build/
-picolibc/
-picolibc-install/
-/lib/
+old/
+out/
 *.iso
 *.img

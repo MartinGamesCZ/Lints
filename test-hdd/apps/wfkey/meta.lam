@@ -1,5 +1,0 @@
-{
-  "app:name": "wfkey",
-  "app:version": "1.0.0",
-  "app:entrypoint": "index.js"
-}

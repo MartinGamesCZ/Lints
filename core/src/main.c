@@ -31,14 +31,7 @@ int kernel_main(EFI_SYSTEM_TABLE *st) {
   duk_push_c_function(ctx, native_log, 1);
   duk_put_global_string(ctx, "$log");
 
-  duk_push_object(ctx);
-
-  duk_push_pointer(ctx, (void *)st);
-  duk_put_prop_string(ctx, -2, "st");
-
-  duk_put_global_string(ctx, "$st");
-
-  duk_push_string(ctx, "$log($st.st.ConOut)");
+  duk_push_string(ctx, "var a = 1 + 2; $log(a);");
   duk_int_t returnCode = duk_peval(ctx);
 
   if (returnCode != 0)
