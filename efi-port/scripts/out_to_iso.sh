@@ -16,4 +16,4 @@ mdir -i out/fat.img -/ ::
 # Create the ISO
 # -e specifies the boot image (the FAT image)
 # -no-emul-boot is required for UEFI
-xorriso -as mkisofs -R -f -e /fat.img -no-emul-boot -o out/lints.iso out/img out/fat.img
+xorriso -as mkisofs -R -f -e /fat.img -no-emul-boot -volid LintsEFI -o out/lints.iso out/img out/fat.img

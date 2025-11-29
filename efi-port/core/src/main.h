@@ -3,6 +3,6 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-int kernel_main(EfiSystemTable* systemTable);
+int kernel_main(EFI_SYSTEM_TABLE* systemTable);
 
 #endif
