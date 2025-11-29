@@ -4,7 +4,7 @@ mkdir -p out/img/EFI/BOOT
 mkdir -p out/lib
 
 clang -target x86_64-pc-win32-coff -fno-stack-protector -fshort-wchar -mno-red-zone -Iedk2/MdePkg/Include -Iedk2/MdePkg/Include/X64 -c core/src/efi.c -o out/core/efi.o
-clang -target x86_64-pc-win32-coff -fno-stack-protector -fshort-wchar -mno-red-zone -Icore/compat -Icore/lib/duktape/src -Iedk2/MdePkg/Include -Iedk2/MdePkg/Include/X64 -Iedk2/CryptoPkg/Library/Include -c core/src/main.c -o out/core/main.o
+clang -target x86_64-pc-win32-coff -fno-stack-protector -fshort-wchar -mno-red-zone -Icore/compat -Icore/lib/duktape/src -Iedk2/MdePkg/Include -Iedk2/MdePkg/Include/X64 -Iedk2/CryptoPkg/Library/Include -Iout -c core/src/main.c -o out/core/main.o
 clang -target x86_64-pc-win32-coff -fno-stack-protector -fshort-wchar -mno-red-zone -DDUK_F_GENERIC -U_WIN32 -UWIN32 -U_WIN64 -UWIN64 -Icore/compat -Iedk2/MdePkg/Include -Iedk2/MdePkg/Include/X64 -Iedk2/CryptoPkg/Library/Include -c core/lib/duktape/src/duktape.c -o out/lib/duktape.o
 clang -target x86_64-pc-win32-coff -fno-stack-protector -fshort-wchar -mno-red-zone -Icore/compat -Iedk2/MdePkg/Include -Iedk2/MdePkg/Include/X64 -Iedk2/CryptoPkg/Library/Include -c core/src/compat.c -o out/core/compat.o
 
