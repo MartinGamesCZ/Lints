@@ -3,8 +3,8 @@ const fs = require("fs");
 
 const script = fs.readFileSync("out/os/index.js", "utf-8");
 const processed = script
-  /*.replaceAll("let ", "var ")
-  .replaceAll("const ", "var ")*/
+  .replaceAll("let ", "var ")
+  .replaceAll("const ", "var ")
   .replaceAll("\n`", "\\n`")
   .replaceAll("`", "'");
 

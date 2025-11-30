@@ -90,26 +90,102 @@ int snprintf(char *str, size_t size, const char *format, ...) {
 // sprintf is a macro in CrtLibSupport.h, so we don't define it.
 
 
-// Math
-// Duktape needs math. EDK2 doesn't provide standard math lib.
-// We might need to implement simple versions or pull in a math lib.
-// For now, stubs.
-double floor(double x) { return (double)(int)x; } // Very wrong for negative/large
-double ceil(double x) { return (double)(int)x + 1; } 
-double fabs(double x) { return x < 0 ? -x : x; }
-double pow(double x, double y) { return 0; } // TODO
-double sqrt(double x) { return 0; }
-double sin(double x) { return 0; }
-double cos(double x) { return 0; }
-double tan(double x) { return 0; }
-double asin(double x) { return 0; }
-double acos(double x) { return 0; }
-double atan(double x) { return 0; }
-double atan2(double y, double x) { return 0; }
-double exp(double x) { return 0; }
-double log(double x) { return 0; }
-double log10(double x) { return 0; }
-double fmod(double x, double y) { return 0; }
+// Math functions
+// Duktape needs math functions for proper numeric conversions and bitwise operations.
+// EDK2 doesn't provide a standard math library, so we implement basic versions here.
+
+double fabs(double x) { 
+    return x < 0.0 ? -x : x; 
+}
+
+double floor(double x) { 
+    if (x >= 0.0) {
+        return (double)(INT64)x;
+    } else {
+        INT64 i = (INT64)x;
+        return (double)((x == (double)i) ? i : i - 1);
+    }
+}
+
+double ceil(double x) { 
+    if (x >= 0.0) {
+        INT64 i = (INT64)x;
+        return (double)((x == (double)i) ? i : i + 1);
+    } else {
+        return (double)(INT64)x;
+    }
+}
+
+double trunc(double x) { 
+    return (double)(INT64)x; 
+}
+
+double fmod(double x, double y) {
+    if (y == 0.0) return 0.0;
+    INT64 quotient = (INT64)(x / y);
+    return x - quotient * y;
+}
+
+// Newton-Raphson square root implementation
+double sqrt(double x) {
+    if (x < 0.0) return 0.0;  // Return 0 for negative (should be NaN)
+    if (x == 0.0) return 0.0;
+    
+    double guess = x;
+    double epsilon = 0.00001;
+    
+    // Newton-Raphson: x_new = (x_old + n/x_old) / 2
+    for (int i = 0; i < 50; i++) {
+        double next = (guess + x / guess) / 2.0;
+        if (fabs(next - guess) < epsilon) break;
+        guess = next;
+    }
+    
+    return guess;
+}
+
+// Power function using binary exponentiation for integer exponents
+double pow(double base, double exponent) {
+    // Handle special cases
+    if (exponent == 0.0) return 1.0;
+    if (base == 0.0) return 0.0;
+    if (base == 1.0) return 1.0;
+    if (exponent == 1.0) return base;
+    
+    // Check if exponent is an integer
+    INT64 exp_int = (INT64)exponent;
+    if ((double)exp_int == exponent) {
+        // Integer exponent - use binary exponentiation
+        double result = 1.0;
+        double current = base;
+        UINT64 n = (exp_int < 0) ? -exp_int : exp_int;
+        
+        while (n > 0) {
+            if (n & 1) result *= current;
+            current *= current;
+            n >>= 1;
+        }
+        
+        return (exp_int < 0) ? (1.0 / result) : result;
+    }
+    
+    // For non-integer exponents, return 0 (would need exp/log)
+    return 0.0;
+}
+
+// Trigonometric functions - stubs (not needed for bitwise ops)
+double sin(double x) { return 0.0; }
+double cos(double x) { return 0.0; }
+double tan(double x) { return 0.0; }
+double asin(double x) { return 0.0; }
+double acos(double x) { return 0.0; }
+double atan(double x) { return 0.0; }
+double atan2(double y, double x) { return 0.0; }
+double exp(double x) { return 0.0; }
+double log(double x) { return 0.0; }
+double log10(double x) { return 0.0; }
+double cbrt(double x) { return 0.0; }
+double log2(double x) { return 0.0; }
 
 // Other
 void abort(void) {
@@ -310,9 +386,6 @@ int sscanf(const char *str, const char *format, ...) { return 0; }
 
 time_t time(time_t *tloc) { return 0; }
 double difftime(time_t time1, time_t time0) { return (double)(time1 - time0); }
-double cbrt(double x) { return 0; }
-double log2(double x) { return 0; }
-double trunc(double x) { return (double)(int)x; }
 
 
 // Needed for CrtLibSupport headers to work?
