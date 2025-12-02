@@ -1,6 +1,10 @@
 import { Logger } from "../../../libs/logger";
+import { Path } from "../../../libs/path";
+import { sysfs, sysfs_mkdir, sysfs_writeFile } from "../../filesystem/sysfs";
 
-export function kdriver_dev_pci_init() {}
+export function kdriver_dev_pci_init() {
+  sysfs_mkdir("/pci");
+}
 
 export function kdriver_dev_pci_detectDevices() {
   Logger.log("[PCI] Scanning...");
@@ -51,6 +55,15 @@ export function kdriver_dev_pci_checkDevice(
       subclass.toString(16) +
       ")"
   );
+
+  const dirname = Path.join("/pci", filename);
+
+  sysfs_mkdir(dirname);
+  sysfs_writeFile(Path.join(dirname, "vendor"), "Intel");
+  /*sysfs_writeFile(Path.join(dirname, "vendor"), vendorId.toString(16));
+  sysfs_writeFile(Path.join(dirname, "device"), deviceId.toString(16));
+  sysfs_writeFile(Path.join(dirname, "class"), classCode.toString(16));
+  sysfs_writeFile(Path.join(dirname, "subclass"), subclass.toString(16));*/
 }
 
 export function kdriver_dev_pci_getDeviceId(

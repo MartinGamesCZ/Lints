@@ -97,6 +97,9 @@ duk_ret_t native_systable_pci_write_config(duk_context *ctx) {
 
 int kernel_main(EFI_SYSTEM_TABLE *st) {
   systemTable = st;
+  systemTable->ConOut->ClearScreen(systemTable->ConOut);
+  systemTable->ConOut->OutputString(systemTable->ConOut, L"START\r\n");
+
   ctx = duk_create_heap_default();
 
   duk_push_c_function(ctx, native_systable_conout_output_string, 1);
@@ -120,12 +123,12 @@ int kernel_main(EFI_SYSTEM_TABLE *st) {
   duk_push_c_function(ctx, native_systable_pci_write_config, 5);
   duk_put_global_string(ctx, "$___native_systable_pci_write_config");
 
-
+  systemTable->ConOut->OutputString(systemTable->ConOut, L"RUN\r\n");
 
   duk_push_string(ctx, EMBEDDED_JS);
   duk_int_t returnCode = duk_peval(ctx);
 
-  if (returnCode != 0)
+  /*if (returnCode != 0)
   {
     duk_safe_to_stacktrace(ctx, -1);
 
@@ -134,7 +137,7 @@ int kernel_main(EFI_SYSTEM_TABLE *st) {
     systemTable->ConOut->OutputString(systemTable->ConOut, buffer);
   }
 
-  duk_pop(ctx);
+  duk_pop(ctx);*/
 
   systemTable->ConOut->OutputString(systemTable->ConOut, L"!!! KERNEL EXITED UNEXPECTEDLY !!!\r\n");
 

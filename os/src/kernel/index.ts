@@ -1,5 +1,6 @@
 import { Logger } from "../libs/logger";
 import { kdriver_dev_pci_detectDevices } from "./drivers/dev/pci.kdriver";
+import { sysfs_ls } from "./filesystem/sysfs";
 import {
   kmod_console_clearScreen,
   kmod_console_outputString,
@@ -14,6 +15,12 @@ export function kmain() {
   kmod_drivers_init();
 
   kdriver_dev_pci_detectDevices();
+
+  /*const files = sysfs_ls("/");
+
+  files!.forEach(function (file) {
+    Logger.log(file.name);
+  });*/
 
   return 0;
 }
