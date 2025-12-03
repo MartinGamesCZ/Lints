@@ -18,7 +18,7 @@ export class VFSKModule extends KernelModule {
   mount(fs: FileSystem, mountPoint: string) {
     if (!this.initialized) return;
 
-    Logger.log(`Mounting ${fs.id} at ${mountPoint}`);
+    Logger.log(`[VFS] Mounting ${fs.id} at ${mountPoint}`);
     this.#mounts.set(mountPoint, fs);
   }
 

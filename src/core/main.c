@@ -99,14 +99,37 @@ JSValue jsKCClearScreen(JSContext *ctx, JSValueConst jsThis, int argc, JSValueCo
   return JS_UNDEFINED;
 }
 
+JSValue jsKCPCIReadDword(JSContext *ctx, JSValueConst jsThis, int argc, JSValueConst *argv) {
+  if (argc < 1) return JS_ThrowSyntaxError(ctx, "Missing argument");
+
+  uint32_t addr_u32;
+  JS_ToUint32(ctx, &addr_u32, argv[0]);
+  UINT64 addr = (UINT64)addr_u32; // Ensure type matches EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_PCI_RW's Address parameter
+
+  EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL* pci;
+  EFI_GUID pciGuid = EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_GUID;
+  EFI_STATUS status = gST->BootServices->LocateProtocol(&pciGuid, NULL, (void**)&pci);
+
+  if (EFI_ERROR(status)) {
+    return JS_ThrowInternalError(ctx, "Failed to locate PCI Root Bridge IO Protocol: %d", status);
+  }
+
+  UINT32 data = 0;
+
+  status = pci->Pci.Read(pci, EfiPciWidthUint32, addr, 1, &data);
+
+  return JS_NewUint32(ctx, data);
+}
+
 void initKC(JSContext *ctx) {
   JSValue global = JS_GetGlobalObject(ctx);
   JSValue kc = JS_NewObject(ctx);
 
   JS_SetPropertyStr(ctx, global, "kc", kc);
-  
+
   JS_SetPropertyStr(ctx, kc, "println", JS_NewCFunction(ctx, jsKCPrintln, "println", 1));
   JS_SetPropertyStr(ctx, kc, "clearScreen", JS_NewCFunction(ctx, jsKCClearScreen, "clearScreen", 0));
+  JS_SetPropertyStr(ctx, kc, "pciReadDword", JS_NewCFunction(ctx, jsKCPCIReadDword, "pciReadDword", 1));
 
   JS_FreeValue(ctx, global);
 }
