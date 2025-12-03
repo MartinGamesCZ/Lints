@@ -93,13 +93,20 @@ JSValue jsKCPrintln(JSContext *ctx, JSValueConst jsThis, int argc, JSValueConst 
   return JS_UNDEFINED;
 }
 
+JSValue jsKCClearScreen(JSContext *ctx, JSValueConst jsThis, int argc, JSValueConst *argv) {
+  gST->ConOut->ClearScreen(gST->ConOut);
+
+  return JS_UNDEFINED;
+}
+
 void initKC(JSContext *ctx) {
   JSValue global = JS_GetGlobalObject(ctx);
   JSValue kc = JS_NewObject(ctx);
 
   JS_SetPropertyStr(ctx, global, "kc", kc);
-
+  
   JS_SetPropertyStr(ctx, kc, "println", JS_NewCFunction(ctx, jsKCPrintln, "println", 1));
+  JS_SetPropertyStr(ctx, kc, "clearScreen", JS_NewCFunction(ctx, jsKCClearScreen, "clearScreen", 0));
 
   JS_FreeValue(ctx, global);
 }

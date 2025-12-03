@@ -1,3 +1,5 @@
+import { KMain } from "./kernel";
+
 export function KEntry() {
-  kc.println("Kernel entry point reached!");
+  KMain();
 }
