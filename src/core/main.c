@@ -128,28 +128,40 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
 
     initKC(ctx);
     
-    JSValue val = JS_Eval(ctx, SYSTEM_PROG_JS, strlen(SYSTEM_PROG_JS), "<input>", JS_EVAL_TYPE_GLOBAL);
+    JSValue val;
+    JSValue eval_result = JS_Eval(ctx, SYSTEM_PROG_JS, strlen(SYSTEM_PROG_JS), "<input>", JS_EVAL_TYPE_GLOBAL);
+    if (JS_IsException(eval_result)) val = eval_result;
+    else {
+      JS_FreeValue(ctx, eval_result);
+
+      JSValue global_obj = JS_GetGlobalObject(ctx);
+      JSValue kentry_func = JS_GetPropertyStr(ctx, global_obj, "KEntry");
+
+      if (JS_IsFunction(ctx, kentry_func)) val = JS_Call(ctx, kentry_func, JS_UNDEFINED, 0, NULL);
+      else val = JS_ThrowReferenceError(ctx, "KEntry function not found or not callable");
+
+      JS_FreeValue(ctx, kentry_func);
+      JS_FreeValue(ctx, global_obj);
+    }
     
     if (JS_IsException(val)) {
-        JSValue ex = JS_GetException(ctx);
-        const char *str = JS_ToCString(ctx, ex);
+      JSValue ex = JS_GetException(ctx);
+      const char *str = JS_ToCString(ctx, ex);
 
-        if (str) {
-            printf("!!! Kernel panic: %s !!!\n", str);
-            JS_FreeCString(ctx, str);
-        } else {
-            printf("!!! Kernel panic: [unknown] !!!\n");
-        }
-        JS_FreeValue(ctx, ex);
+      if (str) {
+        printf("!!! Kernel panic: %s !!!\n", str);
+        JS_FreeCString(ctx, str);
+      } else printf("!!! Kernel panic: [unknown] !!!\n");
+      
+      JS_FreeValue(ctx, ex);
     } else {
-        const char *str = JS_ToCString(ctx, val);
-        if (str) {
-            printf("!!! Kernel panic: %s !!!\n", str);
-            JS_FreeCString(ctx, str);
-        } else {
-            printf("!!! Kernel panic: [unknown] !!!\n");
-        }
-        JS_FreeValue(ctx, val);
+      const char *str = JS_ToCString(ctx, val);
+      if (str) {
+        printf("!!! Kernel panic: %s !!!\n", str);
+        JS_FreeCString(ctx, str);
+      } else printf("!!! Kernel panic: [unknown] !!!\n");
+      
+      JS_FreeValue(ctx, val);
     }
     
     JS_FreeContext(ctx);
