@@ -6,6 +6,7 @@
 #include "quickjs.h"
 #include "efi.h"
 #include "util.h"
+#include "system_prog.h"
 
 static EFI_SYSTEM_TABLE *gST = NULL;
 
@@ -127,10 +128,7 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
 
     initKC(ctx);
     
-    const char *code = 
-        "kc.println(\"Hello from Kernel C!\")";
-        
-    JSValue val = JS_Eval(ctx, code, strlen(code), "<input>", JS_EVAL_TYPE_GLOBAL);
+    JSValue val = JS_Eval(ctx, SYSTEM_PROG_JS, strlen(SYSTEM_PROG_JS), "<input>", JS_EVAL_TYPE_GLOBAL);
     
     if (JS_IsException(val)) {
         JSValue ex = JS_GetException(ctx);

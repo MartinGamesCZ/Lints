@@ -1,1 +1,1 @@
-kc.println("Hello via Bun!");
+kc.println("Kernel works!");

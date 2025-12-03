@@ -3,7 +3,12 @@
 import { script, step, cmd, $ } from "sailet";
 
 script("build", () => [
-  step("Build core", () => [cmd($`./src/scripts/build_core.sh`)]),
+  step("Prepare", () => [cmd($`./src/scripts/prepare_build.sh`)]),
+  step("Build EFI", () => [
+    cmd($`./src/scripts/build_system.sh`),
+    cmd($`./src/scripts/embed_system.sh`),
+    cmd($`./src/scripts/build_core.sh`),
+  ]),
   step("Build ISO", () => [cmd($`./src/scripts/build_iso.sh`)]),
 ]);
 

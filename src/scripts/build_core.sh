@@ -1,8 +1,6 @@
 #!/bin/bash
 set -e
 
-rm -rf out
-
 mkdir -p out
 mkdir -p out/core
 mkdir -p out/lib
@@ -122,6 +120,7 @@ clang -target x86_64-pc-win32-coff \
     -mno-red-zone \
     -Isrc/core/compat \
     -Isrc/lib/quickjs \
+    -Iout/system \
     -D_GNU_SOURCE \
     -DUEFI \
     -DCONFIG_VERSION=\"2021-03-27\" \
