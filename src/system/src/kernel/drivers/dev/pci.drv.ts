@@ -27,6 +27,13 @@ export class PCIKDriver extends KernelDriver {
     for (let bus = 0; bus < 256; bus++) {
       for (let device = 0; device < 32; device++) {
         this.#checkDevice(bus, device, 0);
+
+        const headerType = this.#getHeaderType(bus, device, 0);
+        if ((headerType & 0x80) === 0) continue;
+
+        for (let func = 1; func < 8; func++) {
+          this.#checkDevice(bus, device, func);
+        }
       }
     }
   }
@@ -74,6 +81,10 @@ export class PCIKDriver extends KernelDriver {
 
   #getDeviceSubclass(bus: number, device: number, func: number) {
     return (this.#readConfig(bus, device, func, 8) >> 16) & 0xff;
+  }
+
+  #getHeaderType(bus: number, device: number, func: number) {
+    return (this.#readConfig(bus, device, func, 12) >> 16) & 0xff;
   }
 
   #readConfig(bus: number, device: number, func: number, offset: number) {
