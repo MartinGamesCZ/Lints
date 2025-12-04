@@ -244,15 +244,119 @@ long strtol(const char *str, char **endptr, int base) {
     return result * sign;
 }
 
-#define HEAP_SIZE (8 * 1024 * 1024)
-static unsigned char heap[HEAP_SIZE];
+// Dynamic heap - will be initialized based on available RAM
+static unsigned char *heap = NULL;
+static size_t heap_size = 0;
 static size_t heap_pos = 0;
 
+// Forward declare EFI types we need
+typedef uint64_t EFI_STATUS;
+typedef void* EFI_HANDLE;
+typedef uint64_t UINT64;
+typedef uint32_t UINT32;
+typedef uintptr_t UINTN;
+
+typedef struct {
+    UINT32 Type;
+    UINT64 PhysicalStart;
+    UINT64 VirtualStart;
+    UINT64 NumberOfPages;
+    UINT64 Attribute;
+} EFI_MEMORY_DESCRIPTOR;
+
+typedef struct EFI_BOOT_SERVICES_PARTIAL {
+    // EFI_TABLE_HEADER (24 bytes) + 5 pointers (RaiseTPL, RestoreTPL, AllocatePages, FreePages, GetMemoryMap)
+    char padding[64]; // 24 + 5*8 = 64 bytes to reach AllocatePool
+    EFI_STATUS (*AllocatePool)(UINT32 PoolType, UINTN Size, void **Buffer);
+} EFI_BOOT_SERVICES_PARTIAL;
+
+typedef struct {
+    char hdr[24]; // EFI_TABLE_HEADER
+    void *firmwareVendor;
+    UINT32 firmwareRevision;
+    void *consoleInHandle;
+    void *conIn;
+    void *consoleOutHandle;
+    void *ConOut;
+    void *standardErrorHandle;
+    void *stdErr;
+    void *runtimeServices;
+    EFI_BOOT_SERVICES_PARTIAL *BootServices;
+} EFI_SYSTEM_TABLE_PARTIAL;
+
+#define EfiConventionalMemory 7
+
+// Initialize heap with maximum available memory
+void init_heap(void *system_table) {
+    // Static fallback heap in case EFI allocation fails
+    static unsigned char static_heap[64 * 1024 * 1024]; // 64 MB fallback
+    
+    EFI_SYSTEM_TABLE_PARTIAL *st = (EFI_SYSTEM_TABLE_PARTIAL*)system_table;
+    
+    // Safety check
+    if (!st || !st->BootServices || !st->BootServices->AllocatePool) {
+        printf("WARNING: EFI Boot Services not available, using static heap\n");
+        heap = static_heap;
+        heap_size = sizeof(static_heap);
+        heap_pos = 0;
+        printf("Heap initialized: %zu MB (static fallback)\n", heap_size / (1024 * 1024));
+        return;
+    }
+    
+    // Try to allocate a very large heap - start with 16 GB and work down if needed
+    size_t sizes[] = {
+        16ULL * 1024 * 1024 * 1024,  // 16 GB
+        8ULL * 1024 * 1024 * 1024,   // 8 GB
+        4ULL * 1024 * 1024 * 1024,   // 4 GB
+        2ULL * 1024 * 1024 * 1024,   // 2 GB
+        1ULL * 1024 * 1024 * 1024,   // 1 GB
+        512ULL * 1024 * 1024,        // 512 MB
+        256ULL * 1024 * 1024,        // 256 MB
+        128ULL * 1024 * 1024,        // 128 MB
+        64ULL * 1024 * 1024,         // 64 MB
+        32ULL * 1024 * 1024,         // 32 MB
+        16ULL * 1024 * 1024,         // 16 MB
+        8ULL * 1024 * 1024           // 8 MB (fallback)
+    };
+    
+    for (int i = 0; i < 12; i++) {
+        EFI_STATUS status = st->BootServices->AllocatePool(
+            EfiConventionalMemory,
+            sizes[i],
+            (void**)&heap
+        );
+        
+        if (status == 0) { // EFI_SUCCESS
+            heap_size = sizes[i];
+            heap_pos = 0;
+            if (heap_size >= 1024ULL * 1024 * 1024) {
+                printf("Heap initialized: %zu GB (%zu bytes)\n", 
+                       heap_size / (1024ULL * 1024 * 1024), heap_size);
+            } else {
+                printf("Heap initialized: %zu MB (%zu bytes)\n", 
+                       heap_size / (1024 * 1024), heap_size);
+            }
+            return;
+        }
+    }
+    
+    // If all EFI allocations failed, use static heap
+    printf("WARNING: EFI allocation failed, using static heap\n");
+    heap = static_heap;
+    heap_size = sizeof(static_heap);
+    heap_pos = 0;
+    printf("Heap initialized: %zu MB (static fallback)\n", heap_size / (1024 * 1024));
+}
+
 void *malloc(size_t size) {
+    if (!heap) {
+        printf("malloc failed: heap not initialized\n");
+        return (void*)0;
+    }
     size = (size + 7) & ~7;
     size_t total = size + 8;
-    if (heap_pos + total > HEAP_SIZE) {
-        printf("malloc failed: OOM\n");
+    if (heap_pos + total > heap_size) {
+        printf("malloc failed: OOM (requested %zu, available %zu)\n", total, heap_size - heap_pos);
         return (void*)0;
     }
     *(size_t*)&heap[heap_pos] = size;

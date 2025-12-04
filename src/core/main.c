@@ -1,14 +1,17 @@
-#include <stdint.h>
+#include "efi.h"
+#include "quickjs.h"
+#include "stdio.h"
+#include "system_prog.h"
+#include "util.h"
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdarg.h>
-#include "stdio.h"
-#include "quickjs.h"
-#include "efi.h"
-#include "util.h"
-#include "system_prog.h"
+#include <stdint.h>
 
 static EFI_SYSTEM_TABLE *gST = NULL;
+
+// Declare heap initialization function from minilibc.c
+extern void init_heap(void *system_table);
 
 void print(uint16_t *str) {
     if (gST && gST->ConOut)
@@ -29,7 +32,8 @@ int printf(const char *format, ...) {
 }
 
 int fprintf(FILE *stream, const char *format, ...) {
-  if (stream != stdout && stream != stderr) return 0;
+  if (stream != stdout && stream != stderr)
+    return 0;
 
   char buf[1024];
   va_list ap;
@@ -44,7 +48,8 @@ int fprintf(FILE *stream, const char *format, ...) {
 }
 
 size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream) {
-  if (stream != stdout && stream != stderr) return 0;
+  if (stream != stdout && stream != stderr)
+    return 0;
 
   const char *p = ptr;
   size_t total = size * nmemb;
@@ -53,7 +58,8 @@ size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream) {
     
   while (i < total) {
     size_t chunk = total - i;
-    if (chunk > 1024) chunk = 1024;
+    if (chunk > 1024)
+      chunk = 1024;
     
     memcpy(buf, p + i, chunk);
     buf[chunk] = 0;
@@ -66,24 +72,27 @@ size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream) {
 }
 
 int fputc(int c, FILE *stream) {
-  if (stream != stdout && stream != stderr) return c;
-  char buf[2] = { (char)c, 0 };
+  if (stream != stdout && stream != stderr)
+    return c;
+  char buf[2] = {(char)c, 0};
 
   print(AsciiToUnicode(buf));
   
   return c;
 }
 
-int putchar(int c) {
-  return fputc(c, stdout);
-}
+int putchar(int c) { return fputc(c, stdout); }
 
-// ------------------------------- Kernel C TS bindings -------------------------------
-JSValue jsKCPrintln(JSContext *ctx, JSValueConst jsThis, int argc, JSValueConst *argv) {
-  if (argc < 1) return JS_ThrowSyntaxError(ctx, "Missing argument");
+// ------------------------------- Kernel C TS bindings
+// -------------------------------
+JSValue jsKCPrintln(JSContext *ctx, JSValueConst jsThis, int argc,
+                    JSValueConst *argv) {
+  if (argc < 1)
+    return JS_ThrowSyntaxError(ctx, "Missing argument");
 
   const char *str = JS_ToCString(ctx, argv[0]);
-  if (!str) return JS_EXCEPTION;
+  if (!str)
+    return JS_EXCEPTION;
 
   print(AsciiToUnicode(str));
   print(L"\r\n");
@@ -93,25 +102,32 @@ JSValue jsKCPrintln(JSContext *ctx, JSValueConst jsThis, int argc, JSValueConst 
   return JS_UNDEFINED;
 }
 
-JSValue jsKCClearScreen(JSContext *ctx, JSValueConst jsThis, int argc, JSValueConst *argv) {
+JSValue jsKCClearScreen(JSContext *ctx, JSValueConst jsThis, int argc,
+                        JSValueConst *argv) {
   gST->ConOut->ClearScreen(gST->ConOut);
 
   return JS_UNDEFINED;
 }
 
-JSValue jsKCPCIReadDword(JSContext *ctx, JSValueConst jsThis, int argc, JSValueConst *argv) {
-  if (argc < 1) return JS_ThrowSyntaxError(ctx, "Missing argument");
+JSValue jsKCPCIReadDword(JSContext *ctx, JSValueConst jsThis, int argc,
+                         JSValueConst *argv) {
+  if (argc < 1)
+    return JS_ThrowSyntaxError(ctx, "Missing argument");
 
   uint32_t addr_u32;
   JS_ToUint32(ctx, &addr_u32, argv[0]);
-  UINT64 addr = (UINT64)addr_u32; // Ensure type matches EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_PCI_RW's Address parameter
+  UINT64 addr = (UINT64)
+      addr_u32; // Ensure type matches EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_PCI_RW's
+                // Address parameter
 
-  EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL* pci;
+  EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL *pci;
   EFI_GUID pciGuid = EFI_PCI_ROOT_BRIDGE_IO_PROTOCOL_GUID;
-  EFI_STATUS status = gST->BootServices->LocateProtocol(&pciGuid, NULL, (void**)&pci);
+  EFI_STATUS status =
+      gST->BootServices->LocateProtocol(&pciGuid, NULL, (void **)&pci);
 
   if (EFI_ERROR(status)) {
-    return JS_ThrowInternalError(ctx, "Failed to locate PCI Root Bridge IO Protocol: %d", status);
+    return JS_ThrowInternalError(
+        ctx, "Failed to locate PCI Root Bridge IO Protocol: %d", status);
   }
 
   UINT32 data = 0;
@@ -134,7 +150,8 @@ void initKC(JSContext *ctx) {
   JS_FreeValue(ctx, global);
 }
 
-// ------------------------------------- EFI main -------------------------------------
+// ------------------------------------- EFI main
+// -------------------------------------
 EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
     (void)ImageHandle;
     
@@ -142,6 +159,9 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
     gST->ConOut->ClearScreen(gST->ConOut);
     
     print(L"Booting LintsOS...\r\n");
+
+  // Initialize heap with maximum available memory
+  init_heap(SystemTable);
 
     JSRuntime *rt = JS_NewRuntime();
     if (!rt) {
@@ -159,16 +179,21 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
     initKC(ctx);
     
     JSValue val;
-    JSValue eval_result = JS_Eval(ctx, SYSTEM_PROG_JS, strlen(SYSTEM_PROG_JS), "<input>", JS_EVAL_TYPE_GLOBAL);
-    if (JS_IsException(eval_result)) val = eval_result;
+  JSValue eval_result = JS_Eval(ctx, SYSTEM_PROG_JS, strlen(SYSTEM_PROG_JS),
+                                "<input>", JS_EVAL_TYPE_GLOBAL);
+  if (JS_IsException(eval_result))
+    val = eval_result;
     else {
       JS_FreeValue(ctx, eval_result);
 
       JSValue global_obj = JS_GetGlobalObject(ctx);
       JSValue kentry_func = JS_GetPropertyStr(ctx, global_obj, "KEntry");
 
-      if (JS_IsFunction(ctx, kentry_func)) val = JS_Call(ctx, kentry_func, JS_UNDEFINED, 0, NULL);
-      else val = JS_ThrowReferenceError(ctx, "KEntry function not found or not callable");
+    if (JS_IsFunction(ctx, kentry_func))
+      val = JS_Call(ctx, kentry_func, JS_UNDEFINED, 0, NULL);
+    else
+      val = JS_ThrowReferenceError(ctx,
+                                   "KEntry function not found or not callable");
 
       JS_FreeValue(ctx, kentry_func);
       JS_FreeValue(ctx, global_obj);
@@ -181,7 +206,8 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
       if (str) {
         printf("!!! Kernel panic: %s !!!\n", str);
         JS_FreeCString(ctx, str);
-      } else printf("!!! Kernel panic: [unknown] !!!\n");
+    } else
+      printf("!!! Kernel panic: [unknown] !!!\n");
       
       JS_FreeValue(ctx, ex);
     } else {
@@ -189,7 +215,8 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
       if (str) {
         printf("!!! Kernel panic: %s !!!\n", str);
         JS_FreeCString(ctx, str);
-      } else printf("!!! Kernel panic: [unknown] !!!\n");
+    } else
+      printf("!!! Kernel panic: [unknown] !!!\n");
       
       JS_FreeValue(ctx, val);
     }
@@ -197,7 +224,8 @@ EFI_STATUS efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable) {
     JS_FreeContext(ctx);
     JS_FreeRuntime(rt);
 
-    for(;;);
+  for (;;)
+    ;
     
     return EFI_SUCCESS;
 }
