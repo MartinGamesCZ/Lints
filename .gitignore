@@ -1,4 +1,5 @@
 old/
 out/
+node_modules/
 *.iso
 *.img

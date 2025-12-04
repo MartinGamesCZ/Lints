@@ -1,0 +1,17 @@
+{
+  "lockfileVersion": 1,
+  "workspaces": {
+    "": {
+      "dependencies": {
+        "sailet": "^0.1.1",
+      },
+    },
+  },
+  "packages": {
+    "chalk": ["chalk@5.6.2", "", {}, "sha512-7NzBL0rN6fMUW+f7A6Io4h40qQlG+xGmtMxfbnH/K7TAtt8JQWVQK+6g0UXKMeVJoyV5EkkNsErQ8pVD3bLHbA=="],
+
+    "sailet": ["sailet@0.1.1", "", { "dependencies": { "chalk": "^5.6.2" }, "peerDependencies": { "typescript": "^5" }, "bin": { "sailet": "dist/cli/index.js", "st": "dist/cli/index.js" } }, "sha512-zKcCvANgxqB2YY/XbLtgLomHJvOvcYHDg0qpZ831XxORUm45oVFNWeBItaZzxFGZDfoXNXr6VqzDuRIoukMXaA=="],
+
+    "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+  }
+}

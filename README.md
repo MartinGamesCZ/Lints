@@ -2,7 +2,7 @@
 
 ## What the hell is this?
 
-Lints is an experimental operating system kernel written almost entirely in TypeScript. This is not some in-browser system emulator or WebAssembly hack; Lints actually runs on real hardware (or a hardware emulator like QEMU) by leveraging a JavaScript engine with a small C kernel (just some basic memory management needed by the JS engine) and JS-to-C bindings for purposes like writting data to pointers, etc.
+Lints is an experimental operating system kernel written almost entirely in TypeScript. This is not some in-browser system emulator or WebAssembly hack; Lints actually runs on real hardware (or a virtual machine) by leveraging a JavaScript engine with a small C kernel (just some basic memory management needed by the JS engine) and JS-to-C bindings for purposes like writting data to pointers, etc.
 
 ## Why?
 
@@ -16,11 +16,25 @@ Lints is an experimental operating system kernel written almost entirely in Type
 
 Please don't.
 
-If you really want to, make sure you have Docker installed, then run:
+If you really want to, make sure you have VirtualBox and Bun installed, then run:
 
 ```bash
-./scripts/run-kernel.sh
+bun install
 ```
+
+To run in VirtualBox:
+
+```bash
+st run vbox
+```
+
+To get bootable ISO:
+
+```bash
+st run build
+```
+
+The built ISO can be found in `out/` directory.
 
 ## If you are an employer looking at this...
 
