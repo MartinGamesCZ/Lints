@@ -1,0 +1,6 @@
+CompileFlags:
+  CompilationDatabase: .
+  Add:
+    - "-I%%workspaceFolder%%/src/core/compat"
+    - "-I%%workspaceFolder%%/src/lib/quickjs"
+    - "-I%%workspaceFolder%%/out/system"

@@ -36,6 +36,12 @@ st run build
 
 The built ISO can be found in `out/` directory.
 
+## How to setup development environment?
+
+```bash
+./src/scripts/setup_dev.sh
+```
+
 ## If you are an employer looking at this...
 
 I would appreciate if you messaged me and gave me some well-paid job. Also...
